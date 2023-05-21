@@ -135,3 +135,4 @@ imagen_label = tk.Label(raiz, image=imagen_redimensionada)
 imagen_label.grid(row=1, column=0, columnspan=4, padx=0, pady=0)  
 
 raiz.mainloop()
+
