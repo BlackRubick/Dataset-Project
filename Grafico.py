@@ -9,6 +9,7 @@ import numpy as np
 archivo = None  # Variable global para almacenar el archivo seleccionado
 imagen_generada = None  # Variable global para almacenar la imagen generada
 
+
 # Logica para poder cargar el los archivos .csv
 def cargar_archivo():
     global archivo  # Declarar la variable como global
@@ -24,9 +25,11 @@ def cargar_archivo():
         df = pd.read_csv(archivo)
         columnas = df.columns.tolist()
 
+
         # Actualizar los valores del combobox2 con las columnas del archivo
         combobox2['values'] = ['Seleccionar ColumnaxD'] + columnas
         combobox2.current(0)  # establecer la selección inicial en Seleccionar ColumnaxD
+
 
 # Logica del boton aceptar y validaciones
 def aceptar():
@@ -44,6 +47,8 @@ def aceptar():
         else:
             df = pd.read_csv(archivo)
             data = df.groupby(columna_seleccionada).size()
+            data_type = df[columna_seleccionada].dtype
+            print(data_type) #imprime que tipo de dato es la columna
             plt.figure(figsize=(10, 6))
 
             if combobox1.get() == "Histograma":
@@ -74,7 +79,7 @@ def aceptar():
                 plt.xticks(rotation=45)
                 plt.grid(True)
                 plt.savefig('demo.png')
-            elif combobox1.get()=="Grafica de pastel":
+            elif combobox1.get() == "Grafica de pastel":
                 grafica_pastel(data)
                 plt.title('Grafica de Pastel')
                 plt.savefig('demo.png')
@@ -85,24 +90,28 @@ def aceptar():
 
             plt.show()
 
+
 def grafica_pastel(data):
     labels = data.index
     sizes = data.values
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
     plt.axis('equal')
+
+
 # variable a llamar para poder usar la libreria tk
 raiz = tk.Tk()
 raiz.title('Proyecto xD')
 
 # Color de Bg, bloquear el tamano y asignar por defecto un tamano del cuadro
 colorxD = '#FF5858'
-raiz.resizable(0, 0)
-raiz.geometry('1600x1000')
+raiz.resizable(10, 10)
+raiz.geometry('1000x600')
 raiz.configure(background=colorxD)
 
 # Opciones de los combobox
-opciones = ['Seleccionar Grafica', 'Histograma', 'Poligono de frecuencias', 'Ojivas', 'Grafica de barras', 'Grafica de pastel']
-opciones2 = ['Seleccionar ColumnaxD','id', 'edad', 'xd', 'estatura']
+opciones = ['Seleccionar Grafica', 'Histograma', 'Poligono de frecuencias', 'Ojivas', 'Grafica de barras',
+            'Grafica de pastel']
+opciones2 = ['Seleccionar ColumnaxD', 'id', 'edad', 'xd', 'estatura']
 
 # Botón para subir archivos
 boton_cargar = tk.Button(raiz, text='--Seleccione un archivo csv--', command=cargar_archivo, font=('Arial', 14))
@@ -122,17 +131,17 @@ combobox1.set(opciones[0])
 boton_aceptar = tk.Button(raiz, text='Aceptar', command=aceptar, font=('Arial', 14))
 boton_aceptar.grid(row=0, column=3, padx=80, pady=80, sticky="w")
 
-# ruta de la imagen obviamente xd 
+# ruta de la imagen obviamente xd
 ruta_imagen = os.path.join(os.getcwd(), "linux.png")
 
 # reajustar imagen
 imagen = tk.PhotoImage(file=ruta_imagen)
-tamano_deseado = (1500, 500)  # Tamano (ancho x alto)
-imagen_redimensionada = imagen.subsample(round(imagen.width() / tamano_deseado[0]), round(imagen.height() / tamano_deseado[1]))
+tamano_deseado = (1000, 500)  # Tamano (ancho x alto)
+imagen_redimensionada = imagen.subsample(round(imagen.width() / tamano_deseado[0]),
+                                         round(imagen.height() / tamano_deseado[1]))
 
 # Widget de imagen
 imagen_label = tk.Label(raiz, image=imagen_redimensionada)
-imagen_label.grid(row=1, column=0, columnspan=4, padx=0, pady=0)  
+imagen_label.grid(row=1, column=0, columnspan=4, padx=0, pady=0)
 
 raiz.mainloop()
-
