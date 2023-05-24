@@ -4,37 +4,74 @@ import pandas as pd
 import tkinter.messagebox as messagebox
 import os
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
+import csv
 
-archivo = None  # Variable global para almacenar el archivo seleccionado
-imagen_generada = None  # Variable global para almacenar la imagen generada
+archivo = None
+imagen_generada = None
+boton_descargar = None  # Variable para el botón de descargar CSV
 
-
-# Logica para poder cargar el los archivos .csv
 def cargar_archivo():
-    global archivo  # Declarar la variable como global
+    global archivo
 
     archivo = filedialog.askopenfilename(filetypes=[("Archivos CSV", "*.csv")])
     if archivo:
-        archivo_nombre = archivo.split("/")[-1]  # Obtener solo el nombre del archivo sin la ruta completa
+        archivo_nombre = archivo.split("/")[-1]
         archivo_nombre = archivo_nombre[:20] + "..." if len(archivo_nombre) > 20 else archivo_nombre
-        boton_cargar.config(text=archivo_nombre)  # Mostrar el nombre del archivo en el botón
+        boton_cargar.config(text=archivo_nombre)
         print('Archivo seleccionado:', archivo)
 
-        # obtener las columnas csv
         df = pd.read_csv(archivo)
         columnas = df.columns.tolist()
+        combobox2['values'] = ['Seleccionar Columna'] + columnas
+        combobox2.current(0)
+
+def obtener_tipo_dato():
+    columna_seleccionada = combobox2.get()
+    if columna_seleccionada != 'Seleccionar Columna':
+        df = pd.read_csv(archivo)
+        data = df[columna_seleccionada]
+        combobox1['values'] = opciones_cuantitativas
+        if combobox1.get() in ['Ojiva', 'Grafico de Barras', 'Grafico de Pastel']:
+            boton_tabla.config(state=tk.NORMAL)  # Habilitar el botón de tabla de frecuencias
+        else:
+            boton_tabla.config(state=tk.DISABLED)  # Deshabilitar el botón de tabla de frecuencias
 
 
-        # Actualizar los valores del combobox2 con las columnas del archivo
-        combobox2['values'] = ['Seleccionar ColumnaxD'] + columnas
-        combobox2.current(0)  # establecer la selección inicial en Seleccionar ColumnaxD
+def generar_tabla_frecuencias():
+    columna_seleccionada = combobox2.get()
+    df = pd.read_csv(archivo)
+    data = df[columna_seleccionada]
+
+    tabla_frecuencias = pd.DataFrame({'clase': data.value_counts().index, 'frecuencia absoluta': data.value_counts().values})
+    tabla_frecuencias['frecuencia relativa'] = tabla_frecuencias['frecuencia absoluta'] / len(data) * 100
+
+    suma_total = tabla_frecuencias['frecuencia absoluta'].sum()
+    total_row = pd.DataFrame({'clase': ['Total'], 'frecuencia absoluta': [suma_total], 'frecuencia relativa': [100]})
+    tabla_frecuencias = pd.concat([tabla_frecuencias, total_row], ignore_index=True)
+
+    messagebox.showinfo('Tabla de Frecuencias', tabla_frecuencias.to_string(index=False))
+
+    global boton_descargar  # Utilizar la variable global del botón de descargar CSV
+
+    if boton_descargar:  # Si el botón ya existe, eliminarlo antes de crear uno nuevo
+        boton_descargar.destroy()
+
+    boton_descargar = tk.Button(raiz, text='Descargar CSV', command=lambda: descargar_csv(tabla_frecuencias),
+                               font=('Arial', 14))
+    boton_descargar.grid(row=1, column=4, padx=80, pady=80, sticky="se")
+
+def descargar_csv(tabla_frecuencias):
+    archivo_guardar = filedialog.asksaveasfilename(defaultextension='.csv', filetypes=[('CSV File', '*.csv')])
+    if archivo_guardar:
+        tabla_frecuencias.to_csv(archivo_guardar, index=False)
+        messagebox.showinfo('Éxito', 'Archivo CSV guardado correctamente.')
 
 
-# Logica del boton aceptar y validaciones
 def aceptar():
-    global archivo  # Declarar la variable como global
-    global imagen_generada  # Declarar la variable como global
+    global archivo
+    global imagen_generada
 
     if boton_cargar.cget("text") == '--Seleccione un archivo csv--':
         messagebox.showerror('Error', 'Por favor seleccione un archivo CSV.')
@@ -42,106 +79,101 @@ def aceptar():
         messagebox.showerror('Error', 'Por favor seleccione una gráfica válida.')
     else:
         columna_seleccionada = combobox2.get()
-        if columna_seleccionada == 'Seleccionar ColumnaxD':
+        if columna_seleccionada == 'Seleccionar Columna':
             messagebox.showerror('Error', 'Por favor seleccione una columna válida.')
         else:
             df = pd.read_csv(archivo)
-            data = df.groupby(columna_seleccionada).size()
-            data_type = df[columna_seleccionada].dtype
-            print(data_type) #imprime que tipo de dato es la columna
-            plt.figure(figsize=(10, 6))
+            data = df[columna_seleccionada]
+            data_type = data.dtype
+            print(data_type)
+            fig = plt.figure(figsize=(10, 6))
 
             if combobox1.get() == "Histograma":
                 data.plot(kind='hist')
                 plt.title('Histograma')
                 plt.xticks(rotation=45)
                 plt.grid(True)
-                plt.savefig('demo.png')
+                imagen_generada = convertir_imagen_plt(fig)
 
-            elif combobox1.get() == "Poligono de frecuencias":
-                plt.plot(data.index, data.values, marker='o')
-                plt.title('Poligono de frecuencia')
+            elif combobox1.get() == "Poligono":
+                plt.plot(data.index, data.values, drawstyle='steps-post')
+                plt.title('Poligono')
                 plt.xticks(rotation=45)
                 plt.grid(True)
-                plt.savefig('demo.png')
+                imagen_generada = convertir_imagen_plt(fig)
+                boton_tabla.config(state=tk.DISABLED)  # Deshabilitar el botón de tabla de frecuencias
 
-            elif combobox1.get() == "Ojivas":
-                frecuencia = np.cumsum(data)
-                plt.plot(data.index, frecuencia, marker='o')
-                plt.title('Gráfica de Ojiva')
+            elif combobox1.get() == "Ojiva":
+                frecuencia = np.cumsum(data.value_counts().sort_index())
+                plt.plot(data.value_counts().sort_index().index, frecuencia, marker='o')
+                plt.title('Ojiva')
                 plt.xticks(rotation=45)
                 plt.grid(True)
-                plt.savefig('demo.png')
+                imagen_generada = convertir_imagen_plt(fig)
 
-            elif combobox1.get() == "Grafica de barras":
-                data.plot(kind='barh')
-                plt.title('Grafica de barras')
+            elif combobox1.get() == "Grafico de Barras":
+                data.value_counts().sort_index().plot(kind='bar')
+                plt.title('Grafico de Barras')
                 plt.xticks(rotation=45)
                 plt.grid(True)
-                plt.savefig('demo.png')
-            elif combobox1.get() == "Grafica de pastel":
-                grafica_pastel(data)
-                plt.title('Grafica de Pastel')
-                plt.savefig('demo.png')
+                imagen_generada = convertir_imagen_plt(fig)
 
-            # Guardar la imagen generada en la variable imagen_generada
-            with open('demo.png', 'rb') as file:
-                imagen_generada = file.read()
+            elif combobox1.get() == "Grafico de Pastel":
+                data.value_counts().plot(kind='pie', autopct='%1.1f%%')
+                plt.title('Gráfico de Pastel')
+                boton_tabla.config(state=tk.DISABLED)  # Deshabilitar el botón de tabla de frecuencias
+                imagen_generada = convertir_imagen_plt(fig)
 
-            plt.show()
+            plt.close(fig)
 
+            imagen_label.configure(image=imagen_generada)
+            imagen_label.image = imagen_generada
 
-def grafica_pastel(data):
-    labels = data.index
-    sizes = data.values
-    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
-    plt.axis('equal')
+            messagebox.showinfo('Éxito', 'Gráfica generada correctamente.')
 
 
-# variable a llamar para poder usar la libreria tk
+def convertir_imagen_plt(fig):
+    canvas = FigureCanvasTkAgg(fig, master=raiz)
+    canvas.draw()
+    imagen_tkinter = canvas.get_tk_widget()
+    imagen_tkinter.grid(row=1, column=0, columnspan=4, padx=0, pady=0)
+    return imagen_tkinter
+
 raiz = tk.Tk()
-raiz.title('Proyecto xD')
+raiz.title('Proyecto')
 
-# Color de Bg, bloquear el tamano y asignar por defecto un tamano del cuadro
 colorxD = '#FF5858'
 raiz.resizable(10, 10)
-raiz.geometry('1000x600')
+raiz.geometry('1600x900')
 raiz.configure(background=colorxD)
 
-# Opciones de los combobox
-opciones = ['Seleccionar Grafica', 'Histograma', 'Poligono de frecuencias', 'Ojivas', 'Grafica de barras',
-            'Grafica de pastel']
-opciones2 = ['Seleccionar ColumnaxD', 'id', 'edad', 'xd', 'estatura']
+opciones_cualitativas = ['Seleccionar Grafica', 'Grafico de Barras', 'Grafico de Pastel', 'Ojiva']
+opciones_cuantitativas = ['Seleccionar Grafica', 'Grafico de Barras', 'Grafico de Pastel', 'Ojiva', 'Poligono', 'Histograma']
 
-# Botón para subir archivos
 boton_cargar = tk.Button(raiz, text='--Seleccione un archivo csv--', command=cargar_archivo, font=('Arial', 14))
 boton_cargar.grid(row=0, column=0, padx=80, pady=80, sticky="w")
 
-# Segundo combobox
-combobox2 = ttk.Combobox(raiz, values=opciones2, font=('Arial', 20), state='readonly')
+combobox2 = ttk.Combobox(raiz, values=[], font=('Arial', 20), state='readonly')
 combobox2.grid(row=0, column=1, padx=80, pady=80, sticky="w")
-combobox2.set(opciones2[0])
+combobox2.set('Seleccionar Columna')
+combobox2.bind("<<ComboboxSelected>>", lambda event: obtener_tipo_dato())
 
-# Primer combobox
-combobox1 = ttk.Combobox(raiz, values=opciones, font=('Arial', 20), state='readonly')
+combobox1 = ttk.Combobox(raiz, values=[], font=('Arial', 20), state='readonly')
 combobox1.grid(row=0, column=2, padx=80, pady=80, sticky="w")
-combobox1.set(opciones[0])
+combobox1.set('Seleccionar Grafica')
+combobox1.bind("<<ComboboxSelected>>", lambda event: obtener_tipo_dato())
 
-# AceptarxD
 boton_aceptar = tk.Button(raiz, text='Aceptar', command=aceptar, font=('Arial', 14))
 boton_aceptar.grid(row=0, column=3, padx=80, pady=80, sticky="w")
 
-# ruta de la imagen obviamente xd
-ruta_imagen = os.path.join(os.getcwd(), "linux.png")
+boton_tabla = tk.Button(raiz, text='Tabla de Frecuencias', command=generar_tabla_frecuencias, font=('Arial', 14), state='disabled')
+boton_tabla.grid(row=0, column=4, padx=80, pady=80, sticky="w")
 
-# reajustar imagen
-imagen = tk.PhotoImage(file=ruta_imagen)
-tamano_deseado = (1000, 500)  # Tamano (ancho x alto)
-imagen_redimensionada = imagen.subsample(round(imagen.width() / tamano_deseado[0]),
-                                         round(imagen.height() / tamano_deseado[1]))
+boton_descargar = tk.Button(raiz, text='Descargar CSV', command=lambda: descargar_csv(tabla_frecuencias), font=('Arial', 14))
+boton_descargar.grid(row=0, column=5, padx=80, pady=80, sticky="se")  # Agregar el botón en la esquina inferior derecha
 
-# Widget de imagen
-imagen_label = tk.Label(raiz, image=imagen_redimensionada)
+imagen_label = tk.Label(raiz)
 imagen_label.grid(row=1, column=0, columnspan=4, padx=0, pady=0)
 
 raiz.mainloop()
+
