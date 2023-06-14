@@ -44,24 +44,25 @@ def variance_p(data, mean):
     return variance_all
 
 
+
+
 def temporal(data, window_size):
-    mean_time = []
-    num_data = len(data)
+        mean_time = []
+        num_data = len(data)
 
-    for i in range(num_data):
-        window = []
+        for i in range(num_data):
+            window = []
 
-        inicio = max(0, i - window_size + 1)
-        fin = i + 1
-        window = data[inicio:fin]
+            inicio = max(0, i - window_size + 1)
+            fin = i + 1
+            window = data[inicio:fin]
 
-        if len(window) >= window_size:
-            media = sum(window) / window_size
-            mean_time.append(media)
+            if len(window) >= window_size:
+                media = sum(window) / window_size
+                mean_time.append(media)
 
-    print(len(mean_time))
-    return mean_time
-
+        print(len(mean_time))
+        return mean_time
 
 def standard_deviation(data):
     stde = sc.stdev(data)
