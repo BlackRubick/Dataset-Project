@@ -132,31 +132,48 @@ def aceptar():
             range_type, number_data, data_column, data, data_type, data_number, array_relative, array_lower, array_superior, mark, absolute_frecuency = cal(
                 columna_seleccionada, combobox1.get())
             if combobox1.get() == "Histograma":
+
                 print(absolute_frecuency)
                 print(mark)
                 mark.append(mark[-1] + (mark[-1] - mark[-2]))
                 bin_edges = np.array(mark)
-                bar_centers = mark[:-1] + np.diff(mark) / 2
 
-                plt.hist(bar_centers, bins=bin_edges, weights=absolute_frecuency, color='#B695C0', rwidth=0.1)
+                bar_width = np.min(np.diff(bin_edges)) * 0.7  # Ajusta el factor multiplicativo según tus necesidades
+
+                bar_centers = mark[:-1]  # Usamos las marcas de clase directamente como las posiciones de las barras
+
+                plt.bar(bar_centers, absolute_frecuency, width=bar_width, color='#B695C0', align='center')
+                plt.xticks(mark[:-1])  # Establecemos las marcas de clase como las etiquetas en el eje x
                 plt.title('Histograma')
                 plt.grid(True)
                 plt.savefig('Histograma.png')
                 imagen_generada = convertir_imagen_plt(fig)
 
+
+
+
             elif combobox1.get() == "Poligono":
-                mark.insert(0, 0)
-                mark.append(max(mark))
+                mark.insert(0, mark[0] - (mark[1] - mark[0]))
+                mark.append(mark[-1] + (mark[-1] - mark[-2]))
+                mark = mark[:-1]
+
                 array_relative.insert(0, 0)
+                array_relative = array_relative[:len(mark) - 1]
                 array_relative.append(0)
+
                 ranges = np.arange(len(mark))
                 plt.plot(ranges, array_relative, marker='o', color='#B695C0', linewidth=3)
                 plt.title('Poligono de frecuencia')
                 plt.xticks(ranges, labels=mark, rotation=45)
-                plt.ylim(0)
+                plt.ylim(0, max(array_relative) + 1)  # Ajuste del límite superior
                 plt.grid(True)
                 plt.savefig('Poligono.png')
                 imagen_generada = convertir_imagen_plt(fig)
+
+
+
+
+
 
             elif combobox1.get() == "Ojiva":
                 array_relative.insert(0, 0)
