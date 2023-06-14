@@ -51,3 +51,4 @@ def absolute_frecuency(data, limit_lower, limit_superior):
 def relative_frecuency(frecuency, all_data):
     relative = (frecuency * 100) / all_data
     return relative
+
