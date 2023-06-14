@@ -4,6 +4,7 @@ import pandas as pd
 
 def limits(min_data, width):
     limit_lower = min_data
+    limit_lower = round(limit_lower, 4)
     limite_superior = limit_lower + width
     return limit_lower, limite_superior
 
@@ -30,6 +31,8 @@ def range(column):
 
 def class_mark(limit_lower, limit_superior):
     mark = (limit_lower + limit_superior) / 2
+    mark = round(mark, 4)
+
     return mark
 
 
